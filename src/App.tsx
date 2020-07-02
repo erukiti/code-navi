@@ -4,7 +4,7 @@ import MonacoEditor, {
   ChangeHandler,
 } from 'react-monaco-editor'
 import { transformAsync, traverse } from '@babel/core'
-import { Stack, DefaultButton } from '@fluentui/react'
+import { DefaultButton } from '@fluentui/react'
 import monaco from 'monaco-editor'
 
 type SourcecodeLocation = {
@@ -93,7 +93,13 @@ export const App: React.FC = () => {
     wordWrap: 'on',
   }
   return (
-    <Stack horizontal style={{ height: '100vh' }}>
+    <div
+      style={{
+        height: '100vh',
+        display: 'grid',
+        gridTemplateColumns: 'auto 600px',
+      }}
+    >
       <MonacoEditor
         language="typescript"
         value={source}
@@ -101,27 +107,41 @@ export const App: React.FC = () => {
         options={options}
         editorDidMount={handleDidMount}
       />
-      <Stack
-        style={{ minWidth: '300px', padding: '10px 20px' }}
-        tokens={{ childrenGap: 10 }}
+      <div
+        style={{
+          display: 'grid',
+          overflowY: 'scroll',
+          gridTemplateColumns: '1fr 1fr',
+          height: 'fit-content',
+        }}
       >
-        {Object.keys(nodes).map((key) => {
-          const primary = !!nodes[key].find((loc) => {
-            return !(
-              loc.start.line > cursor.line ||
-              (loc.start.line === cursor.line &&
-                loc.start.column > cursor.column) ||
-              loc.end.line < cursor.line ||
-              (loc.start.line === cursor.line && loc.end.column < cursor.column)
+        {Object.keys(nodes)
+          .sort()
+          .map((key) => {
+            const primary = !!nodes[key].find((loc) => {
+              return !(
+                loc.start.line > cursor.line ||
+                (loc.start.line === cursor.line &&
+                  loc.start.column > cursor.column) ||
+                loc.end.line < cursor.line ||
+                (loc.start.line === cursor.line &&
+                  loc.end.column < cursor.column)
+              )
+            })
+            return (
+              <DefaultButton
+                key={key}
+                primary={primary}
+                style={{
+                  width: 'calc(100% - 8px)',
+                  margin: 4,
+                }}
+              >
+                {key}
+              </DefaultButton>
             )
-          })
-          return (
-            <DefaultButton key={key} primary={primary}>
-              {key}
-            </DefaultButton>
-          )
-        })}
-      </Stack>
-    </Stack>
+          })}
+      </div>
+    </div>
   )
 }
