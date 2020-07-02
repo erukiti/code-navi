@@ -23,7 +23,17 @@ const parse = async (
   source: string,
   setNodes: React.Dispatch<React.SetStateAction<Nodes>>,
 ) => {
-  const res = await transformAsync(source, { ast: true }).catch((err) => null)
+  const res = await transformAsync(source, {
+    filename: 'file.tsx',
+    ast: true,
+    presets: [
+      require('@babel/preset-typescript'),
+      require('@babel/preset-react'),
+    ],
+  }).catch((err) => {
+    console.log(err)
+    return null
+  })
   if (!res) {
     return
   }
@@ -36,7 +46,7 @@ const parse = async (
   traverse(ast.program, {
     enter(nodePath) {
       const { type, loc } = nodePath.node
-      if (loc === null) {
+      if (loc === null || loc === undefined) {
         return
       }
       nodes[type] = [...(nodes[type] || []), loc]
