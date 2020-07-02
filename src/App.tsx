@@ -7,15 +7,21 @@ import { transformAsync, traverse } from '@babel/core'
 import { Stack, DefaultButton } from '@fluentui/react'
 import monaco from 'monaco-editor'
 
-type Node = {
-  type: string
-  start: number
-  end: number
+type SourcecodeLocation = {
+  line: number
+  column: number
 }
+
+type Loc = {
+  start: SourcecodeLocation
+  end: SourcecodeLocation
+}
+
+type Nodes = { [p: string]: Loc[] }
 
 const parse = async (
   source: string,
-  setNodes: React.Dispatch<React.SetStateAction<readonly Node[]>>,
+  setNodes: React.Dispatch<React.SetStateAction<Nodes>>,
 ) => {
   const res = await transformAsync(source, { ast: true }).catch((err) => null)
   if (!res) {
@@ -26,14 +32,14 @@ const parse = async (
   if (!ast) {
     return
   }
-  const nodes: Node[] = []
+  const nodes: Nodes = {}
   traverse(ast.program, {
     enter(nodePath) {
-      const { type, start, end } = nodePath.node
-      if (start === null || end === null) {
+      const { type, loc } = nodePath.node
+      if (loc === null) {
         return
       }
-      nodes.push({ type, start, end })
+      nodes[type] = [...(nodes[type] || []), loc]
       // console.log(nodePath)
     },
   })
@@ -42,13 +48,20 @@ const parse = async (
 
 export const App: React.FC = () => {
   const [source, setSource] = React.useState('')
-  const [nodes, setNodes] = React.useState<ReadonlyArray<Node>>([])
+  const [nodes, setNodes] = React.useState<Nodes>({})
+  const [cursor, setCursor] = React.useState<SourcecodeLocation>({
+    line: 1,
+    column: 0,
+  })
   const editorRef = React.useRef<monaco.editor.IStandaloneCodeEditor>()
+
+  React.useEffect(() => {
+    parse(source, setNodes)
+  }, [source])
 
   const handleChange: ChangeHandler = React.useCallback(
     (value, ev) => {
       setSource(value)
-      parse(value, setNodes)
     },
     [setSource],
   )
@@ -58,7 +71,9 @@ export const App: React.FC = () => {
 
     editor.focus()
     editor.onDidChangeCursorPosition((ev) => {
-      console.log(ev)
+      // console.log(ev)
+      const { lineNumber: line, column } = ev.position
+      setCursor({ line, column })
     })
   }, [])
 
@@ -80,9 +95,22 @@ export const App: React.FC = () => {
         style={{ minWidth: '300px', padding: '10px 20px' }}
         tokens={{ childrenGap: 10 }}
       >
-        {nodes.map((node) => (
-          <DefaultButton>{node.type}</DefaultButton>
-        ))}
+        {Object.keys(nodes).map((key) => {
+          const primary = !!nodes[key].find((loc) => {
+            return !(
+              loc.start.line > cursor.line ||
+              (loc.start.line === cursor.line &&
+                loc.start.column > cursor.column) ||
+              loc.end.line < cursor.line ||
+              (loc.start.line === cursor.line && loc.end.column < cursor.column)
+            )
+          })
+          return (
+            <DefaultButton key={key} primary={primary}>
+              {key}
+            </DefaultButton>
+          )
+        })}
       </Stack>
     </Stack>
   )
