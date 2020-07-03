@@ -8,6 +8,7 @@ import traverse from '@babel/traverse'
 import { DefaultButton } from '@fluentui/react'
 import * as monaco from 'monaco-editor'
 import { parseConfigFileTextToJson } from 'typescript'
+import { css } from '@emotion/core'
 
 const conf = parseConfigFileTextToJson(
   '/tsconfig.json',
@@ -104,10 +105,10 @@ const Button: React.FC<Props> = ({
     <DefaultButton
       key={type}
       primary={primary}
-      style={{
+      css={css({
         width: 'calc(100% - 8px)',
         margin: 4,
-      }}
+      })}
       onClick={handleClick}
     >
       {type}
@@ -133,7 +134,6 @@ export const App: React.FC = () => {
   }, [source])
 
   React.useEffect(() => {
-    console.log('range changed')
     const ranges = pressedButton ? nodes[pressedButton] : []
 
     const newDecorations = ranges.map(({ start, end }) => {
@@ -177,13 +177,14 @@ export const App: React.FC = () => {
     minimap: { enabled: false },
     wordWrap: 'on',
   }
+
   return (
     <div
-      style={{
+      css={css({
         height: '100vh',
         display: 'grid',
         gridTemplateColumns: 'auto 600px',
-      }}
+      })}
     >
       <MonacoEditor
         language="plaintext"
@@ -193,13 +194,13 @@ export const App: React.FC = () => {
         editorDidMount={handleDidMount}
       />
       <div
-        style={{
+        css={css({
           display: 'grid',
           overflowY: 'auto',
           gridTemplateColumns: '1fr 1fr',
           margin: '1em',
-          height: '-webkit-fill-available',
-        }}
+          height: 'fill-available',
+        })}
       >
         {Object.keys(nodes)
           .sort()

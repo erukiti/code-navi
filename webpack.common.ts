@@ -14,7 +14,7 @@ const createBabelLoader = (isMain: boolean): RuleSetRule => {
           '@babel/preset-react',
           '@babel/preset-typescript',
           '@babel/preset-env',
-          // '@emotion/babel-preset-css-prop',
+          '@emotion/babel-preset-css-prop',
         ],
       },
     },
