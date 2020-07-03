@@ -3,9 +3,19 @@ import MonacoEditor, {
   EditorDidMount,
   ChangeHandler,
 } from 'react-monaco-editor'
-import { transformAsync, traverse } from '@babel/core'
+import { transform } from '@babel/standalone'
+import traverse from '@babel/traverse'
 import { DefaultButton } from '@fluentui/react'
 import * as monaco from 'monaco-editor'
+import { parseConfigFileTextToJson } from 'typescript'
+
+const conf = parseConfigFileTextToJson(
+  '/tsconfig.json',
+  '{ "compilerOptions": {"jsx": "react"} }',
+)
+monaco.languages.typescript.typescriptDefaults.setCompilerOptions(
+  conf.config.compilerOptions,
+)
 
 type SourcecodeLocation = {
   line: number
@@ -23,37 +33,86 @@ const parse = async (
   source: string,
   setNodes: React.Dispatch<React.SetStateAction<Nodes>>,
 ) => {
-  const res = await transformAsync(source, {
-    filename: 'file.tsx',
-    ast: true,
-    presets: [
-      require('@babel/preset-typescript'),
-      require('@babel/preset-react'),
-    ],
-  }).catch((err) => {
-    console.log(err)
-    return null
-  })
-  if (!res) {
-    return
+  try {
+    const res = transform(source, {
+      filename: 'file.tsx',
+      ast: true,
+      parserOpts: { plugins: ['typescript', 'jsx'] },
+    })
+    if (!res) {
+      return
+    }
+    const { ast } = res
+    if (!ast) {
+      return
+    }
+    const nodes: Nodes = {}
+    const ignores = ['Program']
+    traverse(ast, {
+      enter(nodePath) {
+        if (ignores.includes(nodePath.type)) {
+          return
+        }
+        const { type, loc } = nodePath.node
+        if (loc === null || loc === undefined) {
+          return
+        }
+        nodes[type] = [...(nodes[type] || []), loc]
+        // console.log(nodePath)
+      },
+    })
+    setNodes(nodes)
+  } catch (e) {
+    console.log(e)
   }
+}
 
-  const { ast } = res
-  if (!ast) {
-    return
-  }
-  const nodes: Nodes = {}
-  traverse(ast.program, {
-    enter(nodePath) {
-      const { type, loc } = nodePath.node
-      if (loc === null || loc === undefined) {
-        return
-      }
-      nodes[type] = [...(nodes[type] || []), loc]
-      // console.log(nodePath)
-    },
-  })
-  setNodes(nodes)
+type Props = {
+  pressedButton: string | undefined
+  setPressedButton: React.Dispatch<React.SetStateAction<string | undefined>>
+  type: string
+  locations: Loc[]
+  cursor: SourcecodeLocation
+}
+
+const Button: React.FC<Props> = ({
+  pressedButton,
+  type,
+  locations,
+  cursor,
+  setPressedButton,
+}) => {
+  const primary = React.useMemo(() => {
+    return pressedButton
+      ? pressedButton === type
+      : !!locations.find((loc) => {
+          return !(
+            loc.start.line > cursor.line ||
+            (loc.start.line === cursor.line &&
+              loc.start.column > cursor.column) ||
+            loc.end.line < cursor.line ||
+            (loc.start.line === cursor.line && loc.end.column < cursor.column)
+          )
+        })
+  }, [cursor.column, cursor.line, type, locations, pressedButton])
+
+  const handleClick = React.useCallback(() => {
+    setPressedButton(type)
+  }, [setPressedButton, type])
+
+  return (
+    <DefaultButton
+      key={type}
+      primary={primary}
+      style={{
+        width: 'calc(100% - 8px)',
+        margin: 4,
+      }}
+      onClick={handleClick}
+    >
+      {type}
+    </DefaultButton>
+  )
 }
 
 export const App: React.FC = () => {
@@ -74,6 +133,7 @@ export const App: React.FC = () => {
   }, [source])
 
   React.useEffect(() => {
+    console.log('range changed')
     const ranges = pressedButton ? nodes[pressedButton] : []
 
     const newDecorations = ranges.map(({ start, end }) => {
@@ -126,7 +186,7 @@ export const App: React.FC = () => {
       }}
     >
       <MonacoEditor
-        language="typescript"
+        language="plaintext"
         value={source}
         onChange={handleChange}
         options={options}
@@ -135,45 +195,25 @@ export const App: React.FC = () => {
       <div
         style={{
           display: 'grid',
-          overflowY: 'scroll',
+          overflowY: 'auto',
           gridTemplateColumns: '1fr 1fr',
-          height: 'fit-content',
+          margin: '1em',
+          height: '-webkit-fill-available',
         }}
       >
         {Object.keys(nodes)
           .sort()
-          .map((key) => {
-            const primary = pressedButton
-              ? pressedButton === key
-              : !!nodes[key].find((loc) => {
-                  return !(
-                    loc.start.line > cursor.line ||
-                    (loc.start.line === cursor.line &&
-                      loc.start.column > cursor.column) ||
-                    loc.end.line < cursor.line ||
-                    (loc.start.line === cursor.line &&
-                      loc.end.column < cursor.column)
-                  )
-                })
-            return (
-              <DefaultButton
-                key={key}
-                primary={primary}
-                style={{
-                  width: 'calc(100% - 8px)',
-                  margin: 4,
-                }}
-                onClick={() => {
-                  setPressedButton(key)
-                }}
-              >
-                {key}
-              </DefaultButton>
-            )
-          })}
+          .map((key) => (
+            <Button
+              pressedButton={pressedButton}
+              type={key}
+              key={key}
+              locations={nodes[key]}
+              cursor={cursor}
+              setPressedButton={setPressedButton}
+            />
+          ))}
       </div>
     </div>
   )
 }
-
-// https://microsoft.github.io/monaco-editor/playground.html#interacting-with-the-editor-line-and-inline-decorations
