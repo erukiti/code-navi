@@ -5,7 +5,7 @@ import MonacoEditor, {
 } from 'react-monaco-editor'
 import { transformAsync, traverse } from '@babel/core'
 import { DefaultButton } from '@fluentui/react'
-import monaco from 'monaco-editor'
+import * as monaco from 'monaco-editor'
 
 type SourcecodeLocation = {
   line: number
@@ -63,11 +63,35 @@ export const App: React.FC = () => {
     line: 1,
     column: 0,
   })
+  const [pressedButton, setPressedButton] = React.useState<string | undefined>(
+    undefined,
+  )
+  const decorationsRef = React.useRef<any>([])
   const editorRef = React.useRef<monaco.editor.IStandaloneCodeEditor>()
 
   React.useEffect(() => {
     parse(source, setNodes)
   }, [source])
+
+  React.useEffect(() => {
+    const ranges = pressedButton ? nodes[pressedButton] : []
+
+    const newDecorations = ranges.map(({ start, end }) => {
+      return {
+        range: new monaco.Range(
+          start.line,
+          start.column + 1,
+          end.line,
+          end.column + 1,
+        ),
+        options: { inlineClassName: 'deco' },
+      }
+    })
+    decorationsRef.current = editorRef.current?.deltaDecorations(
+      decorationsRef.current,
+      newDecorations,
+    )
+  }, [pressedButton, nodes])
 
   const handleChange: ChangeHandler = React.useCallback(
     (value, ev) => {
@@ -83,7 +107,8 @@ export const App: React.FC = () => {
     editor.onDidChangeCursorPosition((ev) => {
       // console.log(ev)
       const { lineNumber: line, column } = ev.position
-      setCursor({ line, column })
+      setCursor({ line, column: column - 1 })
+      setPressedButton(undefined)
     })
   }, [])
 
@@ -118,16 +143,18 @@ export const App: React.FC = () => {
         {Object.keys(nodes)
           .sort()
           .map((key) => {
-            const primary = !!nodes[key].find((loc) => {
-              return !(
-                loc.start.line > cursor.line ||
-                (loc.start.line === cursor.line &&
-                  loc.start.column > cursor.column) ||
-                loc.end.line < cursor.line ||
-                (loc.start.line === cursor.line &&
-                  loc.end.column < cursor.column)
-              )
-            })
+            const primary = pressedButton
+              ? pressedButton === key
+              : !!nodes[key].find((loc) => {
+                  return !(
+                    loc.start.line > cursor.line ||
+                    (loc.start.line === cursor.line &&
+                      loc.start.column > cursor.column) ||
+                    loc.end.line < cursor.line ||
+                    (loc.start.line === cursor.line &&
+                      loc.end.column < cursor.column)
+                  )
+                })
             return (
               <DefaultButton
                 key={key}
@@ -135,6 +162,9 @@ export const App: React.FC = () => {
                 style={{
                   width: 'calc(100% - 8px)',
                   margin: 4,
+                }}
+                onClick={() => {
+                  setPressedButton(key)
                 }}
               >
                 {key}
@@ -145,3 +175,5 @@ export const App: React.FC = () => {
     </div>
   )
 }
+
+// https://microsoft.github.io/monaco-editor/playground.html#interacting-with-the-editor-line-and-inline-decorations
