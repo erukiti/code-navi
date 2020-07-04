@@ -176,6 +176,7 @@ export const App: React.FC = () => {
     selectOnLineNumbers: true,
     minimap: { enabled: false },
     wordWrap: 'on',
+    automaticLayout: true,
   }
 
   return (
@@ -183,7 +184,7 @@ export const App: React.FC = () => {
       css={css({
         height: '100vh',
         display: 'grid',
-        gridTemplateColumns: 'auto 600px',
+        gridTemplateColumns: 'auto 500px',
       })}
     >
       <MonacoEditor
