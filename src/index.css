@@ -19,4 +19,6 @@ code {
 
 .deco {
   background-color: #afe;
+  border: 1px dotted;
+  border-radius: 3px;
 }
