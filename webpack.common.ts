@@ -1,9 +1,9 @@
 import path from 'path'
-import { Configuration, RuleSetRule, ProvidePlugin } from 'webpack'
+import { Configuration, RuleSetRule } from 'webpack'
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin')
 const HTMLPlugin = require('html-webpack-plugin')
 
-const createBabelLoader = (isMain: boolean): RuleSetRule => {
+const createBabelLoader = (): RuleSetRule => {
   return {
     test: /\.(ts|js)x?$/,
     exclude: /node_modules/,
@@ -25,7 +25,7 @@ const alias = {
   '~': path.resolve(__dirname, 'src'),
 }
 
-export const renderer: Configuration = {
+export const app: Configuration = {
   // mode: process.env.NODE_ENV,
   target: 'web',
   entry: [path.resolve(__dirname, 'src', 'index.tsx')],
@@ -39,7 +39,7 @@ export const renderer: Configuration = {
   },
   module: {
     rules: [
-      createBabelLoader(false),
+      createBabelLoader(),
       {
         test: /\.css$/,
         use: ['style-loader', 'css-loader'],

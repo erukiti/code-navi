@@ -3,20 +3,20 @@ import MonacoEditor, {
   EditorDidMount,
   ChangeHandler,
 } from 'react-monaco-editor'
+import { css } from '@emotion/core'
 import { transform } from '@babel/standalone'
 import traverse from '@babel/traverse'
 import { DefaultButton } from '@fluentui/react'
 import * as monaco from 'monaco-editor'
-import { parseConfigFileTextToJson } from 'typescript'
-import { css } from '@emotion/core'
+// import { parseConfigFileTextToJson } from 'typescript'
 
-const conf = parseConfigFileTextToJson(
-  '/tsconfig.json',
-  '{ "compilerOptions": {"jsx": "react"} }',
-)
-monaco.languages.typescript.typescriptDefaults.setCompilerOptions(
-  conf.config.compilerOptions,
-)
+// const conf = parseConfigFileTextToJson(
+//   '/tsconfig.json',
+//   '{ "compilerOptions": {"jsx": "react"} }',
+// )
+// monaco.languages.typescript.typescriptDefaults.setCompilerOptions(
+//   conf.config.compilerOptions,
+// )
 
 type SourcecodeLocation = {
   line: number
@@ -76,45 +76,41 @@ type Props = {
   cursor: SourcecodeLocation
 }
 
-const Button: React.FC<Props> = ({
-  pressedButton,
-  type,
-  locations,
-  cursor,
-  setPressedButton,
-}) => {
-  const primary = React.useMemo(() => {
-    return pressedButton
-      ? pressedButton === type
-      : !!locations.find((loc) => {
-          return !(
-            loc.start.line > cursor.line ||
-            (loc.start.line === cursor.line &&
-              loc.start.column > cursor.column) ||
-            loc.end.line < cursor.line ||
-            (loc.start.line === cursor.line && loc.end.column < cursor.column)
-          )
-        })
-  }, [cursor.column, cursor.line, type, locations, pressedButton])
+const Button: React.FC<Props> = React.memo(
+  ({ pressedButton, type, locations, cursor, setPressedButton }) => {
+    const primary = React.useMemo(() => {
+      return pressedButton
+        ? pressedButton === type
+        : !!locations.find((loc) => {
+            return !(
+              loc.start.line > cursor.line ||
+              (loc.start.line === cursor.line &&
+                loc.start.column > cursor.column) ||
+              loc.end.line < cursor.line ||
+              (loc.start.line === cursor.line && loc.end.column < cursor.column)
+            )
+          })
+    }, [cursor.column, cursor.line, type, locations, pressedButton])
 
-  const handleClick = React.useCallback(() => {
-    setPressedButton(type)
-  }, [setPressedButton, type])
+    const handleClick = React.useCallback(() => {
+      setPressedButton(type)
+    }, [setPressedButton, type])
 
-  return (
-    <DefaultButton
-      key={type}
-      primary={primary}
-      css={css({
-        width: 'calc(100% - 8px)',
-        margin: 4,
-      })}
-      onClick={handleClick}
-    >
-      {type}
-    </DefaultButton>
-  )
-}
+    return (
+      <DefaultButton
+        key={type}
+        primary={primary}
+        css={css({
+          width: 'calc(100% - 8px)',
+          margin: 4,
+        })}
+        onClick={handleClick}
+      >
+        {type}
+      </DefaultButton>
+    )
+  },
+)
 
 export const App: React.FC = () => {
   const [source, setSource] = React.useState('')

@@ -1,12 +1,12 @@
 import { Configuration } from 'webpack'
 import webpackMerge from 'webpack-merge'
-import { renderer } from './webpack.common'
+import { app } from './webpack.common'
 
 const dev: Configuration = {
   mode: 'development',
   devtool: 'inline-source-map',
 }
 
-const rendererConfig = webpackMerge(renderer, dev)
+const rendererConfig = webpackMerge(app, dev)
 
 export default [rendererConfig]
